@@ -2,141 +2,60 @@
   <img src="https://www.corda.net/wp-content/uploads/2016/11/fg005_corda_b.png" alt="Corda" width="500">
 </p>
 
-# CorDapp Template - Kotlin
+# CorDapp Template with Sampler
 
-Welcome to the Kotlin CorDapp template. The CorDapp template is a stubbed-out CorDapp that you can use to bootstrap 
-your own CorDapps.
-
-**This is the Kotlin version of the CorDapp template. The Java equivalent is 
-[here](https://github.com/corda/cordapp-template-java/).**
+Welcome to the Kotlin CorDapp with Sampler template. The CorDapp template is extended from [CorDapp Template - Kotlin](https://github.com/corda/cordapp-template-kotlin) to demonstrate how to integrate a sampler module into your CorDapp project. 
 
 # Pre-Requisites
 
-See https://docs.corda.net/getting-set-up.html.
+## Corda Performance Test Suite
+The development of CorDapp and sampler itself does not require Corda Performance Test Suite, but you will need it to create and execute test plans. If you are not familiar with Corda Performance Test Suite or how to implement JMeter sampler, please refer to the [Corda documentation](https://docs.corda.net/docs/corda-enterprise/4.8/performance-testing/toc-tree.html).
+
 
 # Usage
 
-## Running tests inside IntelliJ
+## Build the sampler
 
-We recommend editing your IntelliJ preferences so that you use the Gradle runner - this means that the quasar utils
-plugin will make sure that some flags (like ``-javaagent`` - see below) are
-set for you.
+You can build the sampler by simply execute build task in Gradle.
 
-To switch to using the Gradle runner:
+```
 
-* Navigate to ``Build, Execution, Deployment -> Build Tools -> Gradle -> Runner`` (or search for `runner`)
-  * Windows: this is in "Settings"
-  * MacOS: this is in "Preferences"
-* Set "Delegate IDE build/run actions to gradle" to true
-* Set "Run test using:" to "Gradle Test Runner"
+./gradlew jmeter-sampler:build
 
-If you would prefer to use the built in IntelliJ JUnit test runner, you can run ``gradlew installQuasar`` which will
-copy your quasar JAR file to the lib directory. You will then need to specify ``-javaagent:lib/quasar.jar``
-and set the run directory to the project root directory for each test.
+```
+This will generate the output of the build under `jmeter-sampler/build/`, just like other CorDapp modules.
 
-## Running the nodes
+## Deploy the sampler
+In `jmeter-sampler/build.gradle` a `deploySampler` task is defined. This task basically syncs up a deploy folder with the sampler and worflow jar files (as in most cases the sampler has dependencies on workflows of the CorDapp). By default, the deploy folder is `jmeter-sampler/extlibs/`. You can specify a different location by changing the value of `samplerDeployPath` property in [gradle.properties](https://github.com/davidleesbir3/cordapp-template-with-sampler/blob/with-sampler/gradle.properties) file. 
 
-See https://docs.corda.net/tutorial-cordapp.html#running-the-example-cordapp.
+For example, if you have Test Suite installed in `~/Corda-Test-Suite/`, then you might want to set the deploy folder to `~/Corda-Test-Suite/extlibs`. Then run the following command to deploy the sampler:
 
-## Interacting with the nodes
+```
+./gradlew jmeter-sampler:deploySampler
+```
+or simply
 
-### Shell
+```
+./gradlew deploySampler
+```
 
-When started via the command line, each node will display an interactive shell:
+Once it's delpoyed successfully, you should see two jar files in the deploy folder:
 
-    Welcome to the Corda interactive shell.
-    Useful commands include 'help' to see what is available, and 'bye' to shut down the node.
-    
-    Tue Nov 06 11:58:13 GMT 2018>>>
+* jmeter-sampler-1.0.jar
+* workflows-0.1.jar
 
-You can use this shell to interact with your node. For example, enter `run networkMapSnapshot` to see a list of 
-the other nodes on the network:
+## Running Corda Performance Test Suite
+Test Suite comes with a command line argument `-XadditionalSearchPaths` to specify paths for jar files containing classes that need to be loaded. For example, if your JMeter test plan will invoke a class in your sampler, you would need your sampler jar file to be loaded. Assuming Test Suite JAR file is installed in `~/Corda-Test-Suite/`, and sampler deploy folder is `~/Corda-Test-Suite/extlibs/`, you can start up Test Suite GUI by executing the following command
 
-    Tue Nov 06 11:58:13 GMT 2018>>> run networkMapSnapshot
-    [
-      {
-      "addresses" : [ "localhost:10002" ],
-      "legalIdentitiesAndCerts" : [ "O=Notary, L=London, C=GB" ],
-      "platformVersion" : 3,
-      "serial" : 1541505484825
-    },
-      {
-      "addresses" : [ "localhost:10005" ],
-      "legalIdentitiesAndCerts" : [ "O=PartyA, L=London, C=GB" ],
-      "platformVersion" : 3,
-      "serial" : 1541505382560
-    },
-      {
-      "addresses" : [ "localhost:10008" ],
-      "legalIdentitiesAndCerts" : [ "O=PartyB, L=New York, C=US" ],
-      "platformVersion" : 3,
-      "serial" : 1541505384742
-    }
-    ]
-    
-    Tue Nov 06 12:30:11 GMT 2018>>> 
+```
+cd ~/Corda-Test-Suite/
 
-You can find out more about the node shell [here](https://docs.corda.net/shell.html).
+java -jar jmeter-corda.jar -XadditionalSearchPaths="./extlibs/" -XjmeterProperties ./jmeter.properties
+```
 
-### Client
+Performance Test Suite should be started with the sampler and its dependencies loaded. Note that you can specify multiple paths in the `-XadditionalSearchPaths` properties by separating them with semicolon.
 
-`clients/src/main/kotlin/com/template/Client.kt` defines a simple command-line client that connects to a node via RPC 
-and prints a list of the other nodes on the network.
+For more information on available arguments of Peformance Test Suite, please refer to [Corda documentation](https://docs.corda.net/docs/corda-enterprise/4.8/performance-testing/running-jmeter-corda.html#jmeter-corda-wrapper-arguments).
 
-#### Running the client
 
-##### Via the command line
 
-Run the `runTemplateClient` Gradle task. By default, it connects to the node with RPC address `localhost:10006` with 
-the username `user1` and the password `test`.
-
-##### Via IntelliJ
-
-Run the `Run Template Client` run configuration. By default, it connects to the node with RPC address `localhost:10006` 
-with the username `user1` and the password `test`.
-
-### Webserver
-
-`clients/src/main/kotlin/com/template/webserver/` defines a simple Spring webserver that connects to a node via RPC and 
-allows you to interact with the node over HTTP.
-
-The API endpoints are defined here:
-
-     clients/src/main/kotlin/com/template/webserver/Controller.kt
-
-And a static webpage is defined here:
-
-     clients/src/main/resources/static/
-
-#### Running the webserver
-
-##### Via the command line
-
-Run the `runTemplateServer` Gradle task. By default, it connects to the node with RPC address `localhost:10006` with 
-the username `user1` and the password `test`, and serves the webserver on port `localhost:10050`.
-
-##### Via IntelliJ
-
-Run the `Run Template Server` run configuration. By default, it connects to the node with RPC address `localhost:10006` 
-with the username `user1` and the password `test`, and serves the webserver on port `localhost:10050`.
-
-#### Interacting with the webserver
-
-The static webpage is served on:
-
-    http://localhost:10050
-
-While the sole template endpoint is served on:
-
-    http://localhost:10050/templateendpoint
-    
-# Extending the template
-
-You should extend this template as follows:
-
-* Add your own state and contract definitions under `contracts/src/main/kotlin/`
-* Add your own flow definitions under `workflows/src/main/kotlin/`
-* Extend or replace the client and webserver under `clients/src/main/kotlin/`
-
-For a guided example of how to extend this template, see the Hello, World! tutorial 
-[here](https://docs.corda.net/hello-world-introduction.html).
